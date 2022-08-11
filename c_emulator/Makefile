@@ -11,4 +11,4 @@ memory: build
 			--track-origins=yes \
 			./chip8
 style:
-	find . -iname "*.h" -o -iname "*.cpp" | xargs clang-format -i
+	find . -iname "*.h" -o -iname "*.cpp" -o -iname "*.cxx" | xargs clang-format -i
