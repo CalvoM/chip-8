@@ -32,11 +32,18 @@ void Chip8::system_init() {
         keyboard[i] = 0x00;
     }
     this->cls();
+    this->load_font();
 }
 
 void Chip8::cls() {
     for (int i = 0; i < this->screen_size; i++) {
         screen[i] = 0x00;
+    }
+}
+
+void Chip8::load_font() {
+    for (int i = 0; i < 80; i++) {
+        this->memory[i] = this->chip8_fontset[i];
     }
 }
 
@@ -80,16 +87,21 @@ void Chip8::graphics_init() {
 
 void Chip8::loadRom(std::string romFilePath) {
     std::ifstream rom(romFilePath, std::ios::binary);
-    rom.seekg(0, std::ios::end);
-    this->rom_size = rom.tellg();
-    rom.seekg(0, std::ios::beg);
-    char *buffer = new char[rom_size];
-    rom.read(buffer, this->rom_size);
-    for (int i = 0; i < rom_size; i++) {
-        this->memory[this->PC + i] = buffer[i];
+    if (rom.is_open()) {
+        rom.seekg(0, std::ios::end);
+        this->rom_size = rom.tellg();
+        rom.seekg(0, std::ios::beg);
+        char *buffer = new char[rom_size];
+        rom.read(buffer, this->rom_size);
+        for (int i = 0; i < rom_size; i++) {
+            this->memory[this->PC + i] = buffer[i];
+        }
+        delete[] buffer;
+        rom.close();
+    } else {
+        std::cerr << "Could not open the rom at: " << romFilePath << std::endl;
+        this->should_quit = true;
     }
-    delete[] buffer;
-    rom.close();
 }
 
 void Chip8::draw() {
@@ -130,6 +142,7 @@ void Chip8::run() {
         default:
             std::cerr << "Unrecognized OPCode: " << std::hex << this->opcode
                       << std::dec << std::endl;
+            this->should_quit = true;
             break;
         }
         break;
@@ -142,7 +155,7 @@ void Chip8::run() {
         this->PC = this->opcode & 0x0fff;
         break;
     case 0x3000: {
-        unsigned char register_index = this->opcode & 0x0f00;
+        unsigned char register_index = (this->opcode & 0x0f00) >> 8;
         unsigned char value = this->opcode & 0x00ff;
         if (this->Vx[register_index] == value)
             this->PC += 2;
@@ -150,7 +163,7 @@ void Chip8::run() {
         break;
     }
     case 0x4000: {
-        unsigned char register_index = this->opcode & 0x0f00;
+        unsigned char register_index = (this->opcode & 0x0f00) >> 8;
         unsigned char value = this->opcode & 0x00ff;
         if (this->Vx[register_index] != value)
             this->PC += 2;
@@ -158,22 +171,22 @@ void Chip8::run() {
         break;
     }
     case 0x5000: {
-        unsigned char register_x = this->opcode & 0x0f00;
-        unsigned char register_y = this->opcode & 0x00f0;
+        unsigned char register_x = (this->opcode & 0x0f00) >> 8;
+        unsigned char register_y = (this->opcode & 0x00f0) >> 4;
         if (this->Vx[register_x] == this->Vx[register_y])
             this->PC += 2;
         this->PC += 2;
         break;
     }
     case 0x6000: {
-        unsigned char register_index = this->opcode & 0x0f00;
+        unsigned char register_index = (this->opcode & 0x0f00) >> 8;
         unsigned char value = this->opcode & 0x00ff;
         this->Vx[register_index] = value;
         this->PC += 2;
         break;
     }
     case 0x7000: {
-        unsigned char register_index = this->opcode & 0x0f00;
+        unsigned char register_index = (this->opcode & 0x0f00) >> 8;
         unsigned char value = this->opcode & 0x00ff;
         this->Vx[register_index] += value;
         this->PC += 2;
@@ -182,36 +195,36 @@ void Chip8::run() {
     case 0x8000: {
         switch (this->opcode & 0x000f) {
         case 0: {
-            unsigned char register_x = this->opcode & 0x0f00;
-            unsigned char register_y = this->opcode & 0x00f0;
+            unsigned short register_x = (this->opcode & 0x0f00) >> 8;
+            unsigned char register_y = (this->opcode & 0x00f0) >> 4;
             this->Vx[register_x] = this->Vx[register_y];
             this->PC += 2;
             break;
         }
         case 1: {
-            unsigned char register_x = this->opcode & 0x0f00;
-            unsigned char register_y = this->opcode & 0x00f0;
+            unsigned short register_x = (this->opcode & 0x0f00) >> 8;
+            unsigned char register_y = (this->opcode & 0x00f0) >> 4;
             this->Vx[register_x] |= this->Vx[register_y];
             this->PC += 2;
             break;
         }
         case 2: {
-            unsigned char register_x = this->opcode & 0x0f00;
-            unsigned char register_y = this->opcode & 0x00f0;
+            unsigned short register_x = (this->opcode & 0x0f00) >> 8;
+            unsigned char register_y = (this->opcode & 0x00f0) >> 4;
             this->Vx[register_x] &= this->Vx[register_y];
             this->PC += 2;
             break;
         }
         case 3: {
-            unsigned char register_x = this->opcode & 0x0f00;
-            unsigned char register_y = this->opcode & 0x00f0;
+            unsigned short register_x = (this->opcode & 0x0f00) >> 8;
+            unsigned char register_y = (this->opcode & 0x00f0) >> 4;
             this->Vx[register_x] ^= this->Vx[register_y];
             this->PC += 2;
             break;
         }
         case 4: {
-            unsigned short register_x = this->opcode & 0x0f00;
-            unsigned short register_y = this->opcode & 0x00f0;
+            unsigned short register_x = (this->opcode & 0x0f00) >> 8;
+            unsigned char register_y = (this->opcode & 0x00f0) >> 4;
             unsigned short sum = this->Vx[register_x] + this->Vx[register_y];
             this->Vx[register_x] = sum & 0xff;
             if (sum > 0xff)
@@ -222,8 +235,8 @@ void Chip8::run() {
             break;
         }
         case 5: {
-            unsigned short register_x = this->opcode & 0x0f00;
-            unsigned short register_y = this->opcode & 0x00f0;
+            unsigned short register_x = (this->opcode & 0x0f00) >> 8;
+            unsigned char register_y = (this->opcode & 0x00f0) >> 4;
             if (this->Vx[register_x] > this->Vx[register_y])
                 this->Vx[0xf] = 1;
             else
@@ -233,7 +246,7 @@ void Chip8::run() {
             break;
         }
         case 6: {
-            unsigned short register_x = this->opcode & 0x0f00;
+            unsigned short register_x = (this->opcode & 0x0f00) >> 8;
             if (this->Vx[register_x] & 0x0001)
                 this->Vx[0xf] = 1;
             else
@@ -243,8 +256,8 @@ void Chip8::run() {
             break;
         }
         case 7: {
-            unsigned short register_x = this->opcode & 0x0f00;
-            unsigned short register_y = this->opcode & 0x00f0;
+            unsigned short register_x = (this->opcode & 0x0f00) >> 8;
+            unsigned char register_y = (this->opcode & 0x00f0) >> 4;
             if (this->Vx[register_y] > this->Vx[register_x])
                 this->Vx[0xf] = 1;
             else
@@ -254,7 +267,7 @@ void Chip8::run() {
             break;
         }
         case 0xe: {
-            unsigned short register_x = this->opcode & 0x0f00;
+            unsigned short register_x = (this->opcode & 0x0f00) >> 8;
             if (this->Vx[register_x] & 0x8000)
                 this->Vx[0xf] = 1;
             else
@@ -266,13 +279,14 @@ void Chip8::run() {
         default:
             std::cerr << "Unrecognized OPCode: " << std::hex << this->opcode
                       << std::dec << std::endl;
+            this->should_quit = true;
             break;
         }
         break;
     }
     case 0x9000: {
-        unsigned char register_x = this->opcode & 0x0f00;
-        unsigned char register_y = this->opcode & 0x00f0;
+        unsigned char register_x = (this->opcode & 0x0f00) >> 8;
+        unsigned char register_y = (this->opcode & 0x00f0) >> 4;
         if (this->Vx[register_x] != this->Vx[register_y])
             this->PC += 2;
         this->PC += 2;
@@ -285,44 +299,148 @@ void Chip8::run() {
     case 0xb000:
         this->PC = this->Vx[0] + (this->opcode & 0x0fff);
         break;
-    case 0xc000:{
-        unsigned char register_index = this->opcode & 0x0f00;
+    case 0xc000: {
+        unsigned char register_index = (this->opcode & 0x0f00) >> 8;
         unsigned char value = this->opcode & 0x00ff;
         this->Vx[register_index] = (rand() % 0xff) & value;
         this->PC += 2;
         break;
     }
-    case 0xd000:{
-        unsigned short pos_x = this->Vx[this->opcode & 0x0f00];
-        unsigned short pos_y = this->Vx[this->opcode & 0x00f0];
+    case 0xd000: {
+        unsigned short pos_x = this->Vx[(this->opcode & 0x0f00) >> 8];
+        unsigned short pos_y = this->Vx[(this->opcode & 0x00f0) >> 4];
         unsigned short sprite_size = this->opcode & 0x000f;
         unsigned short pixel;
         this->Vx[0xf] = 0;
-			for (int yline = 0; yline < sprite_size; yline++)
-			{
-				pixel = this->memory[this->I + yline];
-				for(int xline = 0; xline < 8; xline++)
-				{
-					if((pixel & (0x80 >> xline)) != 0)
-					{
-						if(this->screen[(pos_x + xline + ((pos_y + yline) * 64))] == 1)
-						{
-							this->Vx[0xf] = 1;                                    
-						}
-						this->screen[pos_x + xline + ((pos_y + yline) * 64)] ^= 1;
-					}
-				}
-			}
+        for (int yline = 0; yline < sprite_size; yline++) {
+            pixel = this->memory[this->I + yline];
+            for (int xline = 0; xline < 8; xline++) {
+                if ((pixel & (0x80 >> xline)) != 0) {
+                    if (this->screen[(pos_x + xline +
+                                      ((pos_y + yline) * 64))] == 1) {
+                        this->Vx[0xf] = 1;
+                    }
+                    this->screen[pos_x + xline + ((pos_y + yline) * 64)] ^= 1;
+                }
+            }
+        }
         this->PC += 2;
         this->should_draw = true;
+        break;
+    }
+    case 0xe000: {
+        switch (this->opcode & 0x00ff) {
+        case 0x009e: {
+            unsigned char value = this->Vx[(this->opcode & 0x0f00) >> 8];
+            if (this->keyboard[value] != 0)
+                this->PC += 2;
+            this->PC += 2;
+            break;
+        }
+        case 0x00a1: {
+            unsigned char value = this->Vx[(this->opcode & 0x0f00) >> 8];
+            if (this->keyboard[value] == 0)
+                this->PC += 2;
+            this->PC += 2;
+            break;
+        }
+        }
+        break;
+    }
+    case 0xf000: {
+        switch (this->opcode & 0x00ff) {
+        case 0x0007:
+            this->Vx[(this->opcode & 0x0f00) >> 8] = this->delayTimer;
+            this->PC += 2;
+            break;
+        case 0x000a: {
+            bool key_press = false;
+            for (int i = 0; i < 16; i++) {
+                if (this->keyboard[i] != 0) {
+                    this->Vx[(this->opcode & 0x0f00) >> 8] = i;
+                    key_press = true;
+                }
+            }
+            if (key_press)
+                this->PC += 2;
+            else return;
+            break;
+        }
+        case 0x0015:
+            this->delayTimer = this->Vx[(this->opcode & 0x0f00) >> 8];
+            this->PC += 2;
+            break;
+        case 0x0018:
+            this->soundTimer = this->Vx[(this->opcode & 0x0f00) >> 8];
+            this->PC += 2;
+            break;
+        case 0x001e:
+            this->I += this->Vx[(this->opcode & 0x0f00) >> 8];
+            this->PC += 2;
+            break;
+        case 0x0033: {
+            unsigned char value = this->Vx[(this->opcode & 0x0f00) >> 8];
+            for (int i = 2; i >= 0; i--) {
+                unsigned char bcd = value % 10;
+                this->memory[this->I + i] = bcd;
+                value /= 10;
+            }
+            this->PC += 2;
+            break;
+        }
+        case 0x0029:
+            this->I = this->Vx[(this->opcode & 0x0f00) >> 8] * 0x05;
+            this->PC += 2;
+            break;
+        case 0x0055: {
+            unsigned char limit = (this->opcode & 0x0f00) >> 8;
+            for (int i = 0; i <= limit; i++) {
+                this->memory[this->I + i] = this->Vx[i];
+            }
+            this->PC += 2;
+            break;
+        }
+        case 0x0065: {
+            unsigned char limit = (this->opcode & 0x0f00) >> 8;
+            for (int i = 0; i <= limit; i++) {
+                this->Vx[i] = this->memory[this->I + i];
+            }
+            this->PC += 2;
+            break;
+        }
+        }
         break;
     }
 
     default:
         std::cerr << "Unrecognized OPCode: " << std::hex << this->opcode
                   << std::dec << std::endl;
+        this->should_quit = true;
         this->PC += 2;
         break;
+    }
+    if (this->delayTimer > 0)
+        --delayTimer;
+    if (this->soundTimer > 0) {
+        std::cout << '\7';
+        --soundTimer;
+    }
+}
+
+void Chip8::capture_keys() {
+    while(SDL_PollEvent(&this->key_event) != 0){
+        if(key_event.type == SDL_QUIT) should_quit = true;
+        else if (key_event.type == SDL_KEYDOWN) {
+            for(int i=0; i<16; i++) {
+                if(key_event.key.keysym.sym == this->keymap[i])
+                    this->keyboard[i] = 1;
+            }
+        }
+        if (key_event.type == SDL_KEYUP) {
+            for(int i=0; i<16; i++) {
+                if(key_event.key.keysym.sym == this->keymap[i]) this->keyboard[i] = 0;
+            }
+        }
     }
 }
 

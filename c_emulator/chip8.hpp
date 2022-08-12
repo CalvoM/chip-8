@@ -14,12 +14,13 @@ class Chip8 {
     bool render_ready() const { return this->should_draw;}
     bool quit() const {return this->should_quit;}
     void draw();
+    void capture_keys();
     ~Chip8();
 
   private:
     const int screen_height = 32;
     const int screen_width = 64;
-    const int scale = 10;
+    const int scale = 12;
     const int screen_size = this->screen_height * this->screen_width;
     unsigned short I;
     unsigned short PC;
@@ -38,6 +39,7 @@ class Chip8 {
     bool should_quit;
     SDL_Renderer *gRenderer = nullptr;
     SDL_Window *gWindow = nullptr;
+    SDL_Event key_event;
 unsigned char chip8_fontset[80] =
   {
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -57,8 +59,27 @@ unsigned char chip8_fontset[80] =
     0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
     0xF0, 0x80, 0xF0, 0x80, 0x80  // F
   };
+  unsigned char keymap[16] = {
+    SDLK_x,
+    SDLK_1,
+    SDLK_2,
+    SDLK_3,
+    SDLK_q,
+    SDLK_w,
+    SDLK_e,
+    SDLK_a,
+    SDLK_s,
+    SDLK_d,
+    SDLK_z,
+    SDLK_c,
+    SDLK_4,
+    SDLK_r,
+    SDLK_f,
+    SDLK_v,
+};
     void system_init();
     void graphics_init();
     void cls();
+    void load_font();
 };
 #endif
