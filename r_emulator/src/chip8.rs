@@ -1,0 +1,71 @@
+const SCREEN_HEIGHT: usize = 32;
+const SCREEN_WIDTH: usize = 64;
+const SCREEN_SIZE: usize = SCREEN_HEIGHT * SCREEN_WIDTH;
+const FONTSET: [u8; 80] = [
+    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+    0x20, 0x60, 0x20, 0x20, 0x70, // 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+];
+pub struct Chip8 {
+    i: u16,
+    pc: u16,
+    sp: u8,
+    delay_timer: u8,
+    sound_timer: u8,
+    opcode: u16,
+    stack: [u16; 16],
+    v_reg: [u8; 16],
+    memory: [u8; 4096],
+    keyboard: [u8; 16],
+    screen: [u8; SCREEN_SIZE],
+    rom_size: u16,
+}
+
+impl Chip8 {
+    pub fn new() -> Chip8 {
+        let mut chip8 = Chip8 {
+            i: 0x0000,
+            pc: 0x0000,
+            sp: 0x00,
+            delay_timer: 0x00,
+            sound_timer: 0x00,
+            opcode: 0x0000,
+            stack: [0x0000; 16],
+            v_reg: [0x00; 16],
+            memory: [0x00; 4096],
+            keyboard: [0x00; 16],
+            screen: [0x00; SCREEN_SIZE],
+            rom_size: 0x0000,
+        };
+        chip8.cls();
+        chip8.load_font();
+        chip8
+    }
+    fn cls(&mut self) {
+        let mut i = 0;
+        while i < SCREEN_SIZE {
+            self.screen[i] = 0x00;
+            i += 1;
+        }
+    }
+    fn load_font(&mut self) {
+        let mut i = 0;
+        while i < 80 {
+            self.memory[i] = FONTSET[i];
+            i += 1;
+        }
+    }
+}
