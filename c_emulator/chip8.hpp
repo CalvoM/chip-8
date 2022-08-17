@@ -3,6 +3,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_mixer.h>
 #include <string>
 
 class Chip8 {
@@ -40,6 +41,7 @@ class Chip8 {
     SDL_Renderer *gRenderer = nullptr;
     SDL_Window *gWindow = nullptr;
     SDL_Event key_event;
+    Mix_Music *gBeep;
 unsigned char chip8_fontset[80] =
   {
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -79,6 +81,7 @@ unsigned char chip8_fontset[80] =
 };
     void system_init();
     void graphics_init();
+    void audio_init();
     void cls();
     void load_font();
 };

@@ -10,6 +10,7 @@ Chip8::Chip8() {
     this->rom_size = 0;
     this->graphics_init();
     this->system_init();
+    this->audio_init();
 }
 
 void Chip8::system_init() {
@@ -47,8 +48,24 @@ void Chip8::load_font() {
     }
 }
 
+void Chip8::audio_init() {
+    if(setup_ok) {
+    if(Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 1, 2048) < 0){
+        std::cerr << "Failed to initialize the audio\n";
+        std::cerr << SDL_GetError << std::endl;
+        this->setup_ok = false;
+    }
+    this->gBeep = Mix_LoadMUS("../sounds/beep.wav");
+    if(this->gBeep == nullptr) {
+        std::cerr << "Failed to initialize the audio\n";
+        std::cerr << SDL_GetError << std::endl;
+        this->setup_ok = false;
+    }
+    }
+}
+
 void Chip8::graphics_init() {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
         std::cerr << "Failed to initialize the graphics\n";
         std::cerr << SDL_GetError << std::endl;
         this->setup_ok = false;
@@ -136,8 +153,9 @@ void Chip8::run() {
             this->PC += 2;
             break;
         case 0x000e: // ret from function (0x00ee)
+            --this->SP;
             this->PC = this->stack[this->SP];
-            this->SP--; // TODO: We will have to check the order
+            this->PC +=2; // TODO: We will have to check the order
             break;
         default:
             std::cerr << "Unrecognized OPCode: " << std::hex << this->opcode
@@ -150,8 +168,8 @@ void Chip8::run() {
         this->PC = this->opcode & 0x0fff;
         break;
     case 0x2000:
-        this->SP++;
         this->stack[this->SP] = this->PC;
+        ++this->SP;
         this->PC = this->opcode & 0x0fff;
         break;
     case 0x3000: {
@@ -344,6 +362,12 @@ void Chip8::run() {
             this->PC += 2;
             break;
         }
+        default:
+            std::cerr << "Unrecognized OPCode: " << std::hex << this->opcode
+                      << std::dec << std::endl;
+            this->should_quit = true;
+            this->PC += 2;
+            break;
         }
         break;
     }
@@ -363,7 +387,8 @@ void Chip8::run() {
             }
             if (key_press)
                 this->PC += 2;
-            else return;
+            else
+                return;
             break;
         }
         case 0x0015:
@@ -422,23 +447,25 @@ void Chip8::run() {
     if (this->delayTimer > 0)
         --delayTimer;
     if (this->soundTimer > 0) {
-        std::cout << '\7';
+        Mix_PlayMusic(this->gBeep,1);
         --soundTimer;
     }
 }
 
 void Chip8::capture_keys() {
-    while(SDL_PollEvent(&this->key_event) != 0){
-        if(key_event.type == SDL_QUIT) should_quit = true;
+    while (SDL_PollEvent(&this->key_event) != 0) {
+        if (key_event.type == SDL_QUIT)
+            should_quit = true;
         else if (key_event.type == SDL_KEYDOWN) {
-            for(int i=0; i<16; i++) {
-                if(key_event.key.keysym.sym == this->keymap[i])
+            for (int i = 0; i < 16; i++) {
+                if (key_event.key.keysym.sym == this->keymap[i])
                     this->keyboard[i] = 1;
             }
         }
         if (key_event.type == SDL_KEYUP) {
-            for(int i=0; i<16; i++) {
-                if(key_event.key.keysym.sym == this->keymap[i]) this->keyboard[i] = 0;
+            for (int i = 0; i < 16; i++) {
+                if (key_event.key.keysym.sym == this->keymap[i])
+                    this->keyboard[i] = 0;
             }
         }
     }
@@ -447,8 +474,11 @@ void Chip8::capture_keys() {
 Chip8::~Chip8() {
     SDL_DestroyRenderer(this->gRenderer);
     SDL_DestroyWindow(this->gWindow);
-    SDL_Quit();
-    IMG_Quit();
+    Mix_FreeMusic(this->gBeep);
+    this->gBeep = nullptr;
     this->gRenderer = nullptr;
     this->gWindow = nullptr;
+    SDL_Quit();
+    IMG_Quit();
+    Mix_Quit();
 }
