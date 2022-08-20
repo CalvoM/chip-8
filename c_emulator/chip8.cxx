@@ -144,6 +144,7 @@ void Chip8::run() {
     this->opcode = memory[this->PC];
     this->opcode <<= 8;
     this->opcode |= memory[this->PC + 1];
+    std::cout<<std::hex<<this->opcode<<" "<<this->PC<<std::dec<<std::endl;
     switch (this->opcode & 0xf000) {
     case 0x0000:
         switch (this->opcode & 0x000f) {
