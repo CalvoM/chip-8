@@ -1,6 +1,6 @@
 BINFILE:=chip8
 COMPILER_FLAGS:=-w -g
-LD_FLAGS:=-lSDL2 -lSDL2_image -lSDL2_mixer
+LD_FLAGS:=-Wall -lSDL2 -lSDL2_image -lSDL2_mixer
 all: build
 	./$(BINFILE)
 build:

@@ -144,7 +144,6 @@ void Chip8::run() {
     this->opcode = memory[this->PC];
     this->opcode <<= 8;
     this->opcode |= memory[this->PC + 1];
-    std::cout<<std::hex<<this->opcode<<" "<<this->PC<<std::dec<<std::endl;
     switch (this->opcode & 0xf000) {
     case 0x0000:
         switch (this->opcode & 0x000f) {
@@ -207,7 +206,9 @@ void Chip8::run() {
     case 0x7000: {
         unsigned char register_index = (this->opcode & 0x0f00) >> 8;
         unsigned char value = this->opcode & 0x00ff;
+        std::cout<<std::hex<<this->opcode<<"-"<<int(value)<<"-"<<int(this->Vx[register_index])<<"-";
         this->Vx[register_index] += value;
+        std::cout<<int(this->Vx[register_index])<<std::dec<<std::endl;
         this->PC += 2;
         break;
     }
@@ -287,7 +288,7 @@ void Chip8::run() {
         }
         case 0xe: {
             unsigned short register_x = (this->opcode & 0x0f00) >> 8;
-            if (this->Vx[register_x] & 0x8000)
+            if (this->Vx[register_x] & 0x80)
                 this->Vx[0xf] = 1;
             else
                 this->Vx[0xf] = 0;

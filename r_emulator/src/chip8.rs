@@ -4,7 +4,7 @@ use sdl2::{
 };
 use std::fs;
 
-const SCREEN_SCALE: usize = 20;
+const SCREEN_SCALE: usize = 1;
 const SCREEN_HEIGHT: usize = 32 * SCREEN_SCALE;
 const SCREEN_WIDTH: usize = 64 * SCREEN_SCALE;
 const SCREEN_SIZE: usize = SCREEN_HEIGHT * SCREEN_WIDTH;
@@ -38,7 +38,6 @@ pub struct Chip8 {
     memory: [u8; 4096],
     keyboard: [u8; 16],
     screen: [u8; SCREEN_SIZE],
-    rom_size: u16,
     g_render: WindowCanvas,
     g_sdl: Sdl,
     should_quit: bool,
@@ -72,7 +71,6 @@ impl Chip8 {
             memory: [0x00; 4096],
             keyboard: [0x00; 16],
             screen: [0x00; SCREEN_SIZE],
-            rom_size: 0x0000,
             g_render: render,
             g_sdl: sdl_ctx,
             should_quit: false,
@@ -347,12 +345,12 @@ impl Chip8 {
                     self.pc += 2;
                 }
                 0x000e => {
-                    self.pc -= 1;
-                    self.pc = self.stack[self.pc as usize];
+                    self.sp -= 1;
+                    self.pc = self.stack[self.sp as usize];
                     self.pc += 2;
                 }
                 opcode => {
-                    eprintln!("Encountered unrecognised Opcode: {opcode:#X}");
+                    eprintln!("Encountered unrecognised Opcode: {opcode:#06X}");
                 }
             },
             0x1000 => {
@@ -360,7 +358,7 @@ impl Chip8 {
             }
             0x2000 => {
                 self.stack[self.sp as usize] = self.pc;
-                self.pc += 1;
+                self.sp += 1;
                 self.pc = self.opcode & 0x0fff;
             }
             0x3000 => {
@@ -425,21 +423,62 @@ impl Chip8 {
                     self.pc += 2;
                 }
                 4 => {
-                println!("8");
                     let reg_x = ((self.opcode & 0x0f00) >> 8) as u16;
                     let reg_y = ((self.opcode & 0x00f0) >> 4) as u16;
                     let sum = (self.v_reg[reg_x as usize] + self.v_reg[reg_y as usize]) as u16;
-                    self.v_reg[reg_x as usize]  = (sum & 0xff) as u8;
+                    self.v_reg[reg_x as usize] = (sum & 0xff) as u8;
                     if sum > 0xff {
                         self.v_reg[0xf] = 1;
                     } else {
                         self.v_reg[0xf] = 0;
                     }
                     self.pc += 2;
-                },
+                }
+                5 => {
+                    let reg_x = ((self.opcode & 0x0f00) >> 8) as u8;
+                    let reg_y = ((self.opcode & 0x00f0) >> 4) as u8;
+                    if self.v_reg[reg_x as usize] > self.v_reg[reg_y as usize] {
+                        self.v_reg[0xf] = 1;
+                    } else {
+                        self.v_reg[0xf] = 0;
+                    }
+                    self.pc += 2;
+                }
+                6 => {
+                    let reg_x = ((self.opcode & 0x0f00) >> 8) as u8;
+                    if (self.v_reg[reg_x as usize] & 0x01) == 0x01 {
+                        self.v_reg[0xf] = 1;
+                    } else {
+                        self.v_reg[0xf] = 0;
+                    }
+                    self.v_reg[reg_x as usize] >>= 1;
+                    self.pc += 2;
+                }
+                7 => {
+                    let reg_x = ((self.opcode & 0x0f00) >> 8) as u8;
+                    let reg_y = ((self.opcode & 0x00f0) >> 4) as u8;
+                    if self.v_reg[reg_y as usize] > self.v_reg[reg_x as usize] {
+                        self.v_reg[0xf] = 1;
+                    } else {
+                        self.v_reg[0xf] = 0;
+                    }
+                    self.v_reg[reg_x as usize] =
+                        self.v_reg[reg_y as usize] - self.v_reg[reg_x as usize];
+                    self.pc += 2;
+                }
+                0x0e => {
+                    let reg_x = ((self.opcode & 0x0f00) >> 8) as u8;
+                    if (self.v_reg[reg_x as usize] & 0x80) == 0x80 {
+                        self.v_reg[0xf] = 1;
+                    } else {
+                        self.v_reg[0xf] = 0;
+                    }
+                    self.v_reg[reg_x as usize] <<= 1;
+                    self.pc += 2;
+                }
 
                 opcode => {
-                    eprintln!("Encountered unrecognised Opcode: {opcode:#X}");
+                    eprintln!("Encountered unrecognised Opcode: {opcode:#06X}");
                 }
             },
             0x9000 => {
@@ -471,27 +510,124 @@ impl Chip8 {
                 let sprite_size = (self.opcode & 0x000f) as u16;
                 let mut pixel: u16;
                 self.v_reg[0xf] = 0x00;
-                let mut y_line =0;
+                let mut y_line = 0;
                 while y_line < sprite_size {
                     pixel = (self.memory[(self.i + y_line as u16) as usize]) as u16;
                     let mut x_line = 0;
                     while x_line < 8 {
-                        if (pixel & (0x80 >> x_line))  ==0 {
-                            if self.screen[(pos_x + x_line + ((pos_y + y_line) * 64)) as usize] == 1{
+                        if (pixel & (0x80 >> x_line)) == 0 {
+                            if self.screen[(pos_x + x_line + ((pos_y + y_line) * 64)) as usize] == 1
+                            {
                                 self.v_reg[0xf] = 1;
                             }
                         }
-                        self.screen[(pos_x + x_line + ((pos_y + y_line) * 64)) as usize]  ^=1;
+                        self.screen[(pos_x + x_line + ((pos_y + y_line) * 64)) as usize] ^= 1;
                         x_line += 1;
                     }
                     y_line += 1;
                 }
-            self.pc +=2;
-            self.should_draw = true;
+                self.pc += 2;
+                self.should_draw = true;
+            }
+            0xe000 => match self.opcode & 0x00ff {
+                0x009e => {
+                    let value = self.v_reg[((self.opcode & 0x0f00) >> 8) as usize] as u8;
+                    if self.keyboard[value as usize] != 0 {
+                        self.pc += 2;
+                    }
+                    self.pc += 2;
+                }
+                0x00a1 => {
+                    let value = self.v_reg[((self.opcode & 0x0f00) >> 8) as usize] as u8;
+                    if self.keyboard[value as usize] == 0 {
+                        self.pc += 2;
+                    }
+                    self.pc += 2;
+                }
+                opcode => {
+                    eprintln!("Encountered unrecognised Opcode: {opcode:#06X}");
+                }
+            },
+            0xf000 => match self.opcode & 0x00ff {
+                0x0007 => {
+                    self.v_reg[((self.opcode & 0x0f00) >> 8) as usize] = self.delay_timer;
+                    self.pc += 2;
+                }
+                0x000a => {
+                    let mut key_press = false;
+                    let mut i: u8 = 0;
+                    while i < 16 {
+                        if self.keyboard[i as usize] != 0 {
+                            self.v_reg[((self.opcode & 0x0f00) >> 8) as usize] = i;
+                            key_press = true;
+                        }
+                        i += 1;
+                    }
+                    if key_press {
+                        self.pc += 2;
+                    } else {
+                        return;
+                    }
+                },
+                0x0015 => {
+                    self.delay_timer = self.v_reg[((self.opcode & 0x0f00) >> 8) as usize];
+                    self.pc += 2;
+                },
+                0x0018 => {
+                    self.sound_timer = self.v_reg[((self.opcode & 0x0f00) >> 8) as usize];
+                    self.pc += 2;
+                },
+                0x001e => {
+                    self.i += self.v_reg[((self.opcode & 0x0f00) >> 8) as usize] as u16;
+                    self.pc += 2;
+                },
+                0x0033 => {
+                    let mut value = self.v_reg[((self.opcode & 0x0f00) >> 8) as usize] as u8;
+                    let mut i =3;
+                    while i >= 1 {
+                        let bcd = value % 10;
+                        self.memory[(self.i + i) as usize] = bcd;
+                        i -= 1;
+                        value /= 10;
+                    }
+                },
+                0x0029 => {
+                    self.i = (self.v_reg[((self.opcode & 0x0f00) >> 8) as usize] * 0x05) as u16;
+                    self.pc +=2;
+                },
+                0x0055 =>{
+                    let limit = (self.opcode & 0x0f00) >> 8;
+                    let mut i = 0;
+                    while i <= limit {
+                        self.memory[(self.i + i) as usize] =self.v_reg[i as usize];
+                        i +=1;
+                    }
+                    self.pc += 2;
+                },
+                0x0065 =>{
+                    let limit = (self.opcode & 0x0f00) >> 8;
+                    let mut i = 0;
+                    while i <= limit {
+                        self.v_reg[i as usize] = self.memory[(self.i + i) as usize];
+                        i +=1;
+                    }
+                    self.pc += 2;
+
+                },
+                opcode => {
+                    eprintln!("Encountered unrecognised Opcode: {opcode:#06X}");
+                }
             },
             opcode => {
-                eprintln!("Encountered unrecognised Opcode: {opcode:#X}");
+                eprintln!("Encountered unrecognised Opcode: {opcode:#06X}");
             }
+        }
+        if self.delay_timer > 0 {
+            self.delay_timer -= 1;
+        }
+        if self.sound_timer > 0 {
+            print!(".");
+            self.sound_timer -= 1;
         }
     }
 }
