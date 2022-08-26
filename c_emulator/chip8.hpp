@@ -16,12 +16,13 @@ class Chip8 {
     bool quit() const {return this->should_quit;}
     void draw();
     void capture_keys();
+    void print_details();
     ~Chip8();
 
   private:
     const int screen_height = 32;
     const int screen_width = 64;
-    const int scale = 12;
+    const int scale = 16;
     const int screen_size = this->screen_height * this->screen_width;
     unsigned short I;
     unsigned short PC;

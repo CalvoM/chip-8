@@ -206,9 +206,7 @@ void Chip8::run() {
     case 0x7000: {
         unsigned char register_index = (this->opcode & 0x0f00) >> 8;
         unsigned char value = this->opcode & 0x00ff;
-        std::cout<<std::hex<<this->opcode<<"-"<<int(value)<<"-"<<int(this->Vx[register_index])<<"-";
         this->Vx[register_index] += value;
-        std::cout<<int(this->Vx[register_index])<<std::dec<<std::endl;
         this->PC += 2;
         break;
     }
@@ -336,8 +334,7 @@ void Chip8::run() {
             pixel = this->memory[this->I + yline];
             for (int xline = 0; xline < 8; xline++) {
                 if ((pixel & (0x80 >> xline)) != 0) {
-                    if (this->screen[(pos_x + xline +
-                                      ((pos_y + yline) * 64))] == 1) {
+                    if (this->screen[(pos_x + xline + ((pos_y + yline) * 64))] == 1) {
                         this->Vx[0xf] = 1;
                     }
                     this->screen[pos_x + xline + ((pos_y + yline) * 64)] ^= 1;
@@ -452,6 +449,11 @@ void Chip8::run() {
         Mix_PlayMusic(this->gBeep,1);
         --soundTimer;
     }
+    this->print_details();
+}
+
+void Chip8::print_details() {
+    std::cout<<"[ I = "<<this->I<<" ]"<<std::endl;
 }
 
 void Chip8::capture_keys() {
