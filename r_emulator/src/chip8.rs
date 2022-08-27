@@ -1,12 +1,13 @@
 use rand::Rng;
 use sdl2::{
-    event::Event, keyboard::Keycode, pixels::Color, rect::Point, render::WindowCanvas, Sdl,
+    event::Event, keyboard::Keycode, pixels::Color, rect::Point, rect::Rect, render::WindowCanvas,
+    Sdl,
 };
 use std::fs;
 
 const SCREEN_SCALE: usize = 20;
-const SCREEN_HEIGHT: usize = 32 * SCREEN_SCALE;
-const SCREEN_WIDTH: usize = 64 * SCREEN_SCALE;
+const SCREEN_HEIGHT: usize = 32;
+const SCREEN_WIDTH: usize = 64;
 const SCREEN_SIZE: usize = SCREEN_HEIGHT * SCREEN_WIDTH;
 const FONTSET: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -50,12 +51,16 @@ impl Chip8 {
         let video_subsys = sdl_ctx.video().unwrap();
 
         let g_window = video_subsys
-            .window("Chip 8 Emulator", SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32)
+            .window(
+                "Chip 8 Emulator",
+                (SCREEN_WIDTH * SCREEN_SCALE) as u32,
+                (SCREEN_HEIGHT * SCREEN_SCALE) as u32,
+            )
             .position_centered()
             .opengl()
             .build()
             .unwrap();
-        let render = g_window.into_canvas().build().unwrap();
+        let render = g_window.into_canvas().accelerated().build().unwrap();
         let mut chip8 = Chip8 {
             i: 0x0000,
             pc: 0x0200,
@@ -78,10 +83,8 @@ impl Chip8 {
         chip8
     }
     fn cls(&mut self) {
-        let mut i = 0;
-        while i < SCREEN_SIZE {
-            self.screen[i] = 0x00;
-            i += 1;
+        for i in 0..SCREEN_SIZE {
+            self.screen[i] = 0x01;
         }
     }
     fn load_font(&mut self) {
@@ -307,24 +310,15 @@ impl Chip8 {
         }
     }
     pub fn draw(&mut self) {
-        self.g_render.set_draw_color(Color::RGB(0x00, 0x00, 0x00));
+        self.g_render.set_draw_color(Color::RGB(0xff, 0xff, 0xff));
         self.g_render.clear();
-        self.g_render.set_draw_color(Color::RGB(0xff, 0x00, 0xff));
-        let mut row_num: usize;
-        let mut y = 0;
-        while y < SCREEN_HEIGHT {
-            let mut x = 0;
-            while x < SCREEN_WIDTH {
-                row_num = y * SCREEN_WIDTH;
-                if self.screen[x + row_num] != 0 {
-                    match self.g_render.draw_point(Point::new(x as i32, y as i32)) {
-                        Ok(_) => {}
-                        Err(e) => eprintln!("{}", e),
-                    }
+        self.g_render.set_draw_color(Color::RGB(0x00, 0x00, 0x00));
+        for y in 0..SCREEN_HEIGHT {
+            for x in 0..SCREEN_WIDTH {
+                if(self.screen[x + (y * SCREEN_WIDTH)]) != 0 {
+                    self.g_render.fill_rect(Rect::new((x*SCREEN_SCALE) as i32,(y*SCREEN_SCALE) as i32,SCREEN_SCALE as u32,SCREEN_SCALE as u32)).unwrap();
                 }
-                x += 1;
             }
-            y += 1;
         }
         self.g_render.present();
         self.should_draw = false;
@@ -482,7 +476,7 @@ impl Chip8 {
                 self.pc += 2;
             }
             0xb => {
-                self.pc = (self.v_reg[0] as u16) + nnn ;
+                self.pc = (self.v_reg[0] as u16) + nnn;
                 self.pc += 2;
             }
             0xc => {
@@ -495,23 +489,16 @@ impl Chip8 {
                 let pos_x = x;
                 let pos_y = y;
                 let sprite_size = n;
-                let mut pixel: u16;
                 self.v_reg[0xf] = 0x00;
-                let mut y_line:usize = 0;
-                while y_line < sprite_size as usize {
-                    pixel = (self.memory[(self.i + y_line as u16) as usize]) as u16;
-                    let mut x_line = 0;
-                    while x_line < 8 {
-                        if (pixel & (0x80 >> x_line)) != 0 {
-                            if self.screen[(pos_x + x_line + ((pos_y + y_line) * 64)) as usize] == 1
-                            {
-                                self.v_reg[0xf] = 1;
-                            }
+                for y_line in 0..sprite_size {
+                    let pixel = (self.memory[(self.i + y_line as u16) as usize]) as u16;
+                    for x_line in 0..8 {
+                        if pixel & (0x80 >> x_line) != 0 {
+                            let screen_pos = pos_x + x_line + (pos_y + y_line as usize) * SCREEN_WIDTH;
+                            self.v_reg[0xf] = self.screen[screen_pos];
+                            self.screen[screen_pos] ^= 1;
                         }
-                        self.screen[(pos_x + x_line + ((pos_y + y_line) * 64)) as usize] ^= 1;
-                        x_line += 1;
                     }
-                    y_line += 1;
                 }
                 self.pc += 2;
                 self.should_draw = true;
@@ -570,11 +557,11 @@ impl Chip8 {
                 }
                 0x33 => {
                     let mut value = self.v_reg[x];
-                    self.memory[self.i as usize] = value%10;
-                    value /=10;
-                    self.memory[(self.i + 1) as usize] = value%10;
-                    value /=10;
-                    self.memory[(self.i + 2) as usize] = value%10;
+                    self.memory[self.i as usize] = value % 10;
+                    value /= 10;
+                    self.memory[(self.i + 1) as usize] = value % 10;
+                    value /= 10;
+                    self.memory[(self.i + 2) as usize] = value % 10;
                     self.pc += 2;
                 }
                 0x29 => {

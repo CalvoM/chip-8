@@ -4,7 +4,7 @@ use r_emulator::chip8::Chip8;
 
 pub fn main() {
     let mut chip = Chip8::new();
-    chip.load_rom(String::from("../roms/chip-8/PONG"));
+    chip.load_rom(String::from("../roms/chip-8/MAZE"));
     while !chip.quitting() {
         chip.run();
         if chip.should_render() {

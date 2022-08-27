@@ -4,7 +4,7 @@
 int main(int argc, char **argv) {
     Chip8 chip8;
     if (chip8.setup_succesful()) {
-        chip8.loadRom("../roms/chip-8/KEYTEST");
+        chip8.loadRom("../roms/chip-8/MAZE");
         while (!chip8.quit()) {
             chip8.run();
             if (chip8.render_ready()) {
