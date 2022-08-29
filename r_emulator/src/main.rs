@@ -3,7 +3,7 @@ use std::time::Duration;
 use r_emulator::chip8::Chip8;
 
 pub fn main() {
-    let mut chip = Chip8::new();
+    let mut chip = Chip8::default();
     chip.load_rom(String::from("../roms/chip-8/MAZE"));
     while !chip.quitting() {
         chip.run();

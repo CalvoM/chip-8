@@ -1,8 +1,5 @@
 use rand::Rng;
-use sdl2::{
-    event::Event, keyboard::Keycode, pixels::Color, rect::Point, rect::Rect, render::WindowCanvas,
-    Sdl,
-};
+use sdl2::{event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::WindowCanvas, Sdl};
 use std::fs;
 
 const SCREEN_SCALE: usize = 20;
@@ -27,6 +24,7 @@ const FONTSET: [u8; 80] = [
     0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
     0xF0, 0x80, 0xF0, 0x80, 0x80, // F
 ];
+/// The chip8 processor abstraction
 pub struct Chip8 {
     i: u16,
     pc: u16,
@@ -43,6 +41,12 @@ pub struct Chip8 {
     g_sdl: Sdl,
     should_quit: bool,
     should_draw: bool,
+}
+
+impl Default for Chip8 {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Chip8 {
@@ -315,8 +319,15 @@ impl Chip8 {
         self.g_render.set_draw_color(Color::RGB(0x00, 0x00, 0x00));
         for y in 0..SCREEN_HEIGHT {
             for x in 0..SCREEN_WIDTH {
-                if(self.screen[x + (y * SCREEN_WIDTH)]) != 0 {
-                    self.g_render.fill_rect(Rect::new((x*SCREEN_SCALE) as i32,(y*SCREEN_SCALE) as i32,SCREEN_SCALE as u32,SCREEN_SCALE as u32)).unwrap();
+                if (self.screen[x + (y * SCREEN_WIDTH)]) != 0 {
+                    self.g_render
+                        .fill_rect(Rect::new(
+                            (x * SCREEN_SCALE) as i32,
+                            (y * SCREEN_SCALE) as i32,
+                            SCREEN_SCALE as u32,
+                            SCREEN_SCALE as u32,
+                        ))
+                        .unwrap();
                 }
             }
         }
@@ -494,7 +505,8 @@ impl Chip8 {
                     let pixel = (self.memory[(self.i + y_line as u16) as usize]) as u16;
                     for x_line in 0..8 {
                         if pixel & (0x80 >> x_line) != 0 {
-                            let screen_pos = pos_x + x_line + (pos_y + y_line as usize) * SCREEN_WIDTH;
+                            let screen_pos =
+                                pos_x + x_line + (pos_y + y_line as usize) * SCREEN_WIDTH;
                             self.v_reg[0xf] = self.screen[screen_pos];
                             self.screen[screen_pos] ^= 1;
                         }
